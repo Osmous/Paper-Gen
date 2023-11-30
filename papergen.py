@@ -4,6 +4,7 @@ import reportlab.lib.pagesizes as pagesizes
 from reportlab.lib.colors import Color
 import reportlab.lib.units as units
 import argparse
+import math
 
 pagesizemap={
     "A0":pagesizes.A0,
@@ -101,111 +102,125 @@ def draw_grid(x,y,pdf):
     draw_hrule(x,y,pdf)
     return
 
-def draw_htridots(x,y,weight,spacing,pdf):
-    # draw horizontal aligned alternating dot grid
-    # xholder used to store the alterating coordinates 
-    xholder=[i+spacing/2 for i in x]
-    xholder.pop()
-    for i,y1 in enumerate(y):
-        if i%2 == 1:
-            for x1 in x:
-                pdf.ellipse(x1-weight/2,y1-weight/2, x1+weight/2,y1+weight/2, stroke=1, fill=1)
+def draw_htridots(min_x,min_y,max_x,max_y,weight,spacing,pdf):
+    h_space = spacing/math.tan(math.pi/3)*2
+    odd = True
+    y1=min_y
+    while y1<=max_y:
+        if odd:
+            x1=min_x
         else:
-            for x1 in xholder:
-                pdf.ellipse(x1-weight/2,y1-weight/2, x1+weight/2,y1+weight/2, stroke=1, fill=1)
-    return
-
-def draw_vtridots(x,y,weight,spacing,pdf):
-    # draw vertical aligned alternating dot grid
-    # yholder used to store the alterating coordinates 
-    yholder=[i+spacing/2 for i in y]
-    yholder.pop()
-    for i,x1 in enumerate(x):
-        if i%2 == 1:
-            for y1 in y:
-                pdf.ellipse(x1-weight/2,y1-weight/2, x1+weight/2,y1+weight/2, stroke=1, fill=1)
-        else:
-            for y1 in yholder:
-                pdf.ellipse(x1-weight/2,y1-weight/2, x1+weight/2,y1+weight/2, stroke=1, fill=1)
+            x1=min_x+h_space/2
+        odd= not odd
+        while x1<=max_x:
+            pdf.ellipse(x1-weight/2,y1-weight/2, x1+weight/2,y1+weight/2, stroke=1, fill=1)
+            x1+=spacing
+        y1+=h_space
     return
 
 
-def draw_htriline(x,y,spacing,pdf):
-    # draw horizontal aligned alternating line grid
-    # same as htridot but lines lol
-    xholder=[i+spacing/2 for i in x]
-    xholder.pop()
+def draw_vtridots(min_x,min_y,max_x,max_y,weight,spacing,pdf):
+    h_space = spacing/math.tan(math.pi/3)*2
+    odd = True
+    x1=min_x
+    while x1<=max_x:
+        if odd:
+            y1=min_y
+        else:
+            y1=min_y+h_space/2
+        odd= not odd
+        while y1<=max_y:
+            pdf.ellipse(x1-weight/2,y1-weight/2, x1+weight/2,y1+weight/2, stroke=1, fill=1)
+            y1+=spacing
+        x1+=h_space
+    return
+
+def draw_htriline(min_x,min_y,max_x,max_y,spacing,pdf):
+    h_space = spacing/math.tan(math.pi/3)*2
+    odd = True
+    y1=min_y
+    y=[]
+    xodd=[]
+    xeven=[]
     lines=[]
+    while y1<=max_y:
+        y.append(y1)
+        y1+=spacing
+    x1=min_x
+    while x1<=max_x:
+        xodd.append(x1)
+        x1+=h_space
+    x1=min_x+h_space/2
+    while x1<=max_x:
+        xeven.append(x1)
+        x1+=h_space    
     i=0
     while i<len(y)-1:
-        if i %2==1:
-            # handle less coordinates to more coordinates draw lines.
-            for c,x1 in enumerate(xholder):
-                lines.append([x1,y[i],x[c],y[i+1]])
-                lines.append([x1,y[i],x[c+1],y[i+1]])
-            # draw dividing line
-            draw_hrule(xholder,[y[i]],pdf)
+        if odd:
+            for c,x1 in enumerate(xodd):
+                lines.append([x1,y[i],xeven[c],y[i+1]])
+                if c!=0:
+                    lines.append([x1,y[i],xeven[c-1],y[i+1]])
+            draw_hrule(xodd,[y[i]],pdf)
+            odd = not odd
             
         else:
-            # handle more coordinates to less coordinates draw lines.
-            for c,x1 in enumerate(x):
-                if c ==0:
-                    lines.append([x1,y[i],xholder[c],y[i+1]])
-                elif c == len(x)-1:
-                    lines.append([x1,y[i],xholder[c-1],y[i+1]])
-                else:
-                    lines.append([x1,y[i],xholder[c],y[i+1]])
-                    lines.append([x1,y[i],xholder[c-1],y[i+1]])
-            # draw dividing line
-            draw_hrule(x,[y[i]],pdf)
+            for c,x1 in enumerate(xeven):
+                lines.append([x1,y[i],xodd[c],y[i+1]])
+                if c!=len(xeven)-1:
+                    lines.append([x1,y[i],xodd[c+1],y[i+1]])
+            draw_hrule(xeven,[y[i]],pdf)
+            odd = not odd
         i+=1
-    # handle final line
-    if len(y)%2 == 0:
-        draw_hrule(xholder,[y[-1]],pdf)
+    if odd:
+        draw_hrule(xodd,[y[-1]],pdf)
     else:
-        draw_hrule(x,[y[-1]],pdf)
-
+        draw_hrule(xeven,[y[-1]],pdf)
     pdf.lines(lines)
     return
 
-def draw_vtriline(x,y,spacing,pdf):
-    # draw vertical aligned alternating line grid
-    # same as htridot but lines lol
-    yholder=[i+spacing/2 for i in y]
-    yholder.pop()
+def draw_vtriline(min_x,min_y,max_x,max_y,spacing,pdf):
+    h_space = spacing/math.tan(math.pi/3)*2
+    odd = True
+    x1=min_x
+    x=[]
+    yodd=[]
+    yeven=[]
     lines=[]
+    while x1<=max_x:
+        x.append(x1)
+        x1+=spacing
+    y1=min_y
+    while y1<=max_y:
+        yodd.append(y1)
+        y1+=h_space
+    y1=min_y+h_space/2
+    while y1<=max_y:
+        yeven.append(y1)
+        y1+=h_space    
     i=0
     while i<len(x)-1:
-        if i %2==1:
-            # handle less coordinates to more coordinates draw lines.
-            for c,y1 in enumerate(yholder):
-                lines.append([x[i],y1,x[i+1],y[c]])
-                lines.append([x[i],y1,x[i+1],y[c+1]])
-            # draw dividing line
-            draw_vrule([x[i]],yholder,pdf)
-            
+        if odd:
+            for c,y1 in enumerate(yodd):
+                lines.append([x[i],y1,x[i+1],yeven[c]])
+                if c!=0:
+                    lines.append([x[i],y1,x[i+1],yeven[c-1]])
+            draw_hrule([x[i]],yeven,pdf)
+            odd = not odd
         else:
-            # handle more coordinates to less coordinates draw lines.
-            for c,y1 in enumerate(y):
-                if c ==0:
-                    lines.append([x[i],y1,x[i+1],yholder[c]])
-                elif c == len(y)-1:
-                    lines.append([x[i],y1,x[i+1],yholder[c-1]])
-                else:
-                    lines.append([x[i],y1,x[i+1],yholder[c]])
-                    lines.append([x[i],y1,x[i+1],yholder[c-1]])
-            # draw dividing line
-            draw_vrule([x[i]],y,pdf)
+            for c,y1 in enumerate(yeven):
+                lines.append([x[i],y1,x[i+1],yeven[c]])
+                if c!=len(yeven)-1:
+                    lines.append([x[i],y1,x[i+1],yeven[c+1]])
+            draw_hrule([x[i]],yodd,pdf)
+            odd = not odd
         i+=1
-    # handle final line
-    if len(x)%2 == 0:
-        draw_vrule([x[-1]],yholder,pdf)
+    if odd:
+        draw_hrule([x[i]],yeven,pdf)
     else:
-        draw_vrule([x[-1]],y,pdf)
-
+        draw_hrule([x[i]],yodd,pdf)
     pdf.lines(lines)
     return
-
 
 def main():
     parser = argparse.ArgumentParser(description="pagegen",formatter_class=argparse.RawTextHelpFormatter)
@@ -284,13 +299,13 @@ def main():
     elif args.type.lower() == "grid":
         draw_grid(x,y,pdf)
     elif args.type.lower() == "htridots":
-        draw_htridots(x,y,args.weight,spacing,pdf)
+        draw_htridots(margin,margin,use_limit[0]+page_size[0]/2,use_limit[1]+page_size[1]/2,args.weight,spacing,pdf)
     elif args.type.lower() == "vtridots":
-        draw_vtridots(x,y,args.weight,spacing,pdf)
+        draw_vtridots(margin,margin,use_limit[0]+page_size[0]/2,use_limit[1]+page_size[1]/2,args.weight,spacing,pdf)
     elif args.type.lower() == "htriline":
-        draw_htriline(x,y,spacing,pdf)
+        draw_htriline(margin,margin,use_limit[0]+page_size[0]/2,use_limit[1]+page_size[1]/2,spacing,pdf)
     elif args.type.lower() == "vtriline":
-        draw_vtriline(x,y,spacing,pdf)
+        draw_vtriline(margin,margin,use_limit[0]+page_size[0]/2,use_limit[1]+page_size[1]/2,spacing,pdf)
     else:
         print("Invalid Type")
         return
